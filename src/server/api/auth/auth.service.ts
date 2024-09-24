@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import type { SignInSchema } from "./auth.types";
+import type { RegisterSchema, SignInSchema } from "./auth.types";
 import { TRPCError } from "@trpc/server";
 import { Argon2id } from "oslo/password";
 import { lucia } from "@/server/auth";
@@ -47,6 +47,42 @@ export async function signIn(values: SignInSchema) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Failed to sign in",
+    });
+  }
+}
+
+export async function register(values: RegisterSchema) {
+  try {
+    const hashedPassword = await new Argon2id().hash(values.password);
+
+    const alreadyUse = await getUserByEmail(values.email);
+    if (alreadyUse)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Email already in use",
+      });
+
+    const user = await db.user.create({
+      data: {
+        email: values.email,
+        username: values.username,
+        hashedPassword,
+      },
+    });
+
+    const session = await lucia.createSession(user.id, {});
+    const sessionCookie = lucia.createSessionCookie(session.id);
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes,
+    );
+  } catch (error) {
+    if (error instanceof TRPCError) throw error;
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to register",
     });
   }
 }
