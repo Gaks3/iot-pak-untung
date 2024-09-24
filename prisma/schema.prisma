@@ -2,19 +2,43 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "mysql"
-    url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+model User {
+  id             String   @id @default(cuid())
+  username       String
+  email          String   @unique
+  hashedPassword String
+  isAdmin        Boolean
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-    @@index([name])
+  sessions       Session[]
+  reset_password ResetPassword?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@map("sesions")
+}
+
+model ResetPassword {
+  id      String   @id
+  userId  String   @unique
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueDate DateTime
+
+  @@map("reset_passwords")
 }
