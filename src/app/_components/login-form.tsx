@@ -18,7 +18,10 @@ import {
 import { Input } from "./ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "./ui/button";
-import { signInSchema, type SignInSchema } from "@/server/api/auth/auth.types";
+import {
+  signInSchema,
+  type SignInSchema,
+} from "@/server/api/routers/auth/auth.types";
 
 export default function LoginForm() {
   const [type, setType] = useState<"password" | "text">("password");

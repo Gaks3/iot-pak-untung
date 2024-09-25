@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   registerSchema,
   type RegisterSchema,
-} from "@/server/api/auth/auth.types";
+} from "@/server/api/routers/auth/auth.types";
 import { api } from "@/trpc/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TRPCClientError } from "@trpc/client";
