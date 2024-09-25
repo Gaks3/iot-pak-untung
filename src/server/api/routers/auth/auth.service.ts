@@ -1,10 +1,18 @@
 import { db } from "@/server/db";
-import type { RegisterSchema, SignInSchema } from "./auth.types";
+import type {
+  ChangeResetPasswordSchema,
+  RegisterSchema,
+  ResetPasswordSchema,
+  SignInSchema,
+} from "./auth.types";
 import { TRPCError } from "@trpc/server";
 import { Argon2id } from "oslo/password";
-import { lucia, validateRequest } from "@/server/auth";
+import { lucia } from "@/server/auth";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { addHours, addMinutes } from "date-fns";
+import { env } from "@/env";
+import { generateId } from "lucia";
+import { sendEmailResetPassword } from "@/server/email";
 
 export async function getUserByEmail(email: string) {
   return await db.user.findUnique({
@@ -106,6 +114,117 @@ export async function signOut(userId: string) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Failed to sign out",
+    });
+  }
+}
+
+export async function resetPassword({ captcha, userId }: ResetPasswordSchema) {
+  try {
+    await deleteResetPasswordExpired();
+
+    const alreadyExist = await db.resetPassword.findUnique({
+      where: { userId },
+    });
+    if (
+      alreadyExist &&
+      alreadyExist.dueDate.getTime() > addHours(new Date(), 7).getTime()
+    )
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Please check your email, or try again 10 minutes later",
+      });
+
+    const captchaValidate = await fetch(
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          secret: env.RECAPTCHA_SECRET_KEY,
+          response: captcha,
+        }),
+      },
+    );
+    if (!captchaValidate.ok)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Captcha not valid",
+      });
+
+    const res = await db.resetPassword.create({
+      data: {
+        id: generateId(20),
+        userId,
+        dueDate: addHours(addMinutes(new Date(), 10), 7),
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    await sendEmailResetPassword(
+      res.user.email,
+      env.NEXT_PUBLIC_BASE_URL + "/reset-password/" + res.id,
+    );
+  } catch (error) {
+    if (error instanceof TRPCError) throw error;
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to create reset password link",
+    });
+  }
+}
+
+export async function deleteResetPasswordExpired() {
+  return await db.resetPassword.deleteMany({
+    where: {
+      dueDate: {
+        lte: addHours(new Date(), 7),
+      },
+    },
+  });
+}
+
+export async function getResetPasswordById(id: string) {
+  try {
+    await deleteResetPasswordExpired();
+
+    return await db.resetPassword.findUnique({ where: { id } });
+  } catch (error) {
+    if (error instanceof TRPCError) throw error;
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to get reset password by id",
+    });
+  }
+}
+
+export async function changePassword(values: ChangeResetPasswordSchema) {
+  try {
+    const hashPassword = await new Argon2id().hash(values.password);
+
+    return await db.user.update({
+      where: {
+        id: values.userId,
+        reset_password: {
+          id: values.resetId,
+        },
+      },
+      data: {
+        hashedPassword: hashPassword,
+        reset_password: {
+          delete: { userId: values.userId, id: values.resetId },
+        },
+      },
+    });
+  } catch (error) {
+    if (error instanceof TRPCError) throw error;
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to change password",
     });
   }
 }
