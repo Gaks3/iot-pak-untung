@@ -23,6 +23,10 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_RECAPTCHA_SITE_KEY: z.string(),
     NEXT_PUBLIC_BASE_URL: z.string().url(),
+    NEXT_PUBLIC_MQTT_URL: z.string().url(),
+    NEXT_PUBLIC_MQTT_PORT: z.string(),
+    NEXT_PUBLIC_MQTT_USERNAME: z.string(),
+    NEXT_PUBLIC_MQTT_PASSWORD: z.string(),
   },
 
   /**
@@ -36,6 +40,10 @@ export const env = createEnv({
     RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
     NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+    NEXT_PUBLIC_MQTT_URL: process.env.NEXT_PUBLIC_MQTT_URL,
+    NEXT_PUBLIC_MQTT_PORT: process.env.NEXT_PUBLIC_MQTT_PORT,
+    NEXT_PUBLIC_MQTT_USERNAME: process.env.NEXT_PUBLIC_MQTT_USERNAME,
+    NEXT_PUBLIC_MQTT_PASSWORD: process.env.NEXT_PUBLIC_MQTT_PASSWORD,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
