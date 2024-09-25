@@ -1,5 +1,9 @@
-import { createTRPCRouter, publicProcedure } from "../trpc";
-import { register, signIn } from "./auth.service";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "../../trpc";
+import { register, signIn, signOut } from "./auth.service";
 import { registerSchema, signInSchema } from "./auth.types";
 
 export const authRouter = createTRPCRouter({
@@ -11,4 +15,7 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       await register(input);
     }),
+  signOut: protectedProcedure.query(async ({ ctx }) => {
+    await signOut(ctx.user.id);
+  }),
 });

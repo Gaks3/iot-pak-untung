@@ -2,8 +2,9 @@ import { db } from "@/server/db";
 import type { RegisterSchema, SignInSchema } from "./auth.types";
 import { TRPCError } from "@trpc/server";
 import { Argon2id } from "oslo/password";
-import { lucia } from "@/server/auth";
+import { lucia, validateRequest } from "@/server/auth";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function getUserByEmail(email: string) {
   return await db.user.findUnique({
@@ -83,6 +84,28 @@ export async function register(values: RegisterSchema) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Failed to register",
+    });
+  }
+}
+
+export async function signOut(userId: string) {
+  try {
+    await lucia.invalidateSession(userId);
+    await lucia.deleteExpiredSessions();
+
+    const sessionCookie = lucia.createBlankSessionCookie();
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes,
+    );
+  } catch (error) {
+    console.log(error);
+    if (error instanceof TRPCError) throw error;
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to sign out",
     });
   }
 }
